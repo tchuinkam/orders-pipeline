@@ -1,8 +1,7 @@
 """Split a list of orders into batches for bulk loading."""
-from itertools import batched
 
 
 def batch_orders(orders, size):
     """Return the orders as a list of batches (lists) of at most `size` orders."""
-    # batched() groups an iterable into tuples of up to `size` items; we turn each into a list.
-    return [list(batch) for batch in batched(orders, size)]
+    # Slicing works the same on every Python version: take `size` orders at a time.
+    return [list(orders[start:start + size]) for start in range(0, len(orders), size)]
