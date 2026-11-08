@@ -1,19 +1,29 @@
 
-# A CALLED ("reusable") workflow: the Day 1 checks, written once. Other workflows call it.
+# The called workflow, now also RECEIVING a secret and RETURNING a value.
 name: Checks
 
 on:
-  workflow_call:               # NEW: this workflow never runs by itself; it waits to be called
-    inputs:                    # NEW: values the caller can pass in, like function arguments
+  workflow_call:
+    inputs:
       python-version:
         description: "Python version to test with"
         required: false
         type: string
-        default: "3.12"        # used when the caller passes nothing
+        default: "3.12"
+    secrets:                   # NEW: secrets the caller may pass. They are NOT passed automatically.
+      DEMO_TOKEN:
+        description: "A fake token, only to show how a secret is passed"
+        required: false
+    outputs:                   # NEW: values this workflow returns to the caller
+      python-used:
+        description: "The Python version the checks ran with"
+        value: ${{ jobs.test.outputs.python-used }}      # take it from the job's output below
 
 jobs:
   test:
     runs-on: ubuntu-24.04
+    outputs:                   # NEW: expose a step's output at job level
+      python-used: ${{ steps.version.outputs.python-used }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -21,8 +31,19 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ inputs.python-version }}   # the value the caller passed (or the default above)
+          python-version: ${{ inputs.python-version }}
           cache: pip
+
+      - name: Record the Python version
+        id: version            # NEW: a name for this step, so other places can read its output
+        # Writing "name=value" into the file $GITHUB_OUTPUT is how a step returns an output.
+        run: echo "python-used=$(python --version)" >> "$GITHUB_OUTPUT"
+
+      - name: Show whether the secret arrived (never its value)
+        env:
+          DEMO_TOKEN: ${{ secrets.DEMO_TOKEN }}     # the secret the caller passed (empty if none)
+        run: |
+          if [ -z "$DEMO_TOKEN" ]; then echo "no token was passed"; else echo "token received (${#DEMO_TOKEN} characters)"; fi
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -32,3 +53,4 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
