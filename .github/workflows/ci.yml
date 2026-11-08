@@ -1,5 +1,5 @@
 
-# A CALLER workflow: it contains no steps of its own. It calls checks.yml.
+# New here: it PASSES a secret to the called workflow and READS an output from it.
 name: CI
 
 on:
@@ -9,10 +9,19 @@ on:
     branches: [main]
 
 permissions:
-  contents: read               # the called workflow can keep or reduce this, never add to it
+  contents: read
 
 jobs:
-  checks:                      # this job id appears in the check name on pull requests
-    uses: ./.github/workflows/checks.yml     # NEW: "run that workflow here" (a path inside this repository)
-    with:                      # NEW: the inputs we pass to it
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
       python-version: "3.12"
+    secrets:                   # NEW: name each secret you pass (this is safer than "secrets: inherit",
+      DEMO_TOKEN: ${{ secrets.DEMO_TOKEN }}     # which passes ALL of them)
+
+  report:                      # NEW
+    needs: checks              # wait for the called workflow to finish
+    runs-on: ubuntu-24.04
+    steps:
+      # NEW: read an output of the called workflow: needs.<job>.outputs.<name>
+      - run: echo "The checks ran with ${{ needs.checks.outputs.python-used }}"
