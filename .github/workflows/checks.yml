@@ -1,0 +1,34 @@
+
+# A CALLED ("reusable") workflow: the Day 1 checks, written once. Other workflows call it.
+name: Checks
+
+on:
+  workflow_call:               # NEW: this workflow never runs by itself; it waits to be called
+    inputs:                    # NEW: values the caller can pass in, like function arguments
+      python-version:
+        description: "Python version to test with"
+        required: false
+        type: string
+        default: "3.12"        # used when the caller passes nothing
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}   # the value the caller passed (or the default above)
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Run tests
+        run: pytest -q
